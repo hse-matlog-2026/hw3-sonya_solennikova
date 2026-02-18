@@ -59,9 +59,9 @@ def is_binary(string: str) -> bool:
     Returns:
         ``True`` if the given string is a binary operator, ``False`` otherwise.
     """
-    return string == '&' or string == '|' or string == '->'
+    # return string == '&' or string == '|' or string == '->'
     # For Chapter 3:
-    # return string in {'&', '|',  '->', '+', '<->', '-&', '-|'}
+    return string in {'&', '|',  '->', '+', '<->', '-&', '-|'}
 
 @frozen
 class Formula:
@@ -222,7 +222,7 @@ class Formula:
                 return None, 'Expected binary operator'
 
             operator = None
-            max_op_length = min(3, len(remainder))
+            max_op_length = min(4, len(remainder))
             for length in range(max_op_length, 0, -1):
                 candidate = remainder[:length]
                 if is_binary(candidate):
@@ -359,6 +359,18 @@ class Formula:
         """
         for variable in substitution_map:
             assert is_variable(variable)
+        
+        if is_variable(self.root) and self.root in substitution_map:
+            return substitution_map[self.root]
+        
+        if is_constant(self.root) or (is_variable(self.root) and self.root not in substitution_map):
+            return Formula(self.root)
+        
+        if is_unary(self.root):
+            return Formula(self.root, self.first.substitute_variables(substitution_map))
+
+        if is_binary(self.root):
+            return Formula(self.root, self.first.substitute_variables(substitution_map), self.second.substitute_variables(substitution_map))
         # Task 3.3
 
     def substitute_operators(self, substitution_map: Mapping[str, Formula]) -> \
@@ -389,4 +401,25 @@ class Formula:
             assert is_constant(operator) or is_unary(operator) or \
                    is_binary(operator)
             assert substitution_map[operator].variables().issubset({'p', 'q'})
+        
+        if self.root in substitution_map:
+            temp = substitution_map[self.root]
+            if is_constant(self.root):
+                return temp
+            if is_unary(self.root):
+                new = self.first.substitute_operators(substitution_map)
+                return temp.substitute_variables({'p': new})
+            if is_binary(self.root):
+                first = self.first.substitute_operators(substitution_map)
+                second = self.second.substitute_operators(substitution_map)
+                return temp.substitute_variables({'p': first, 'q': second})
+        
+        if is_constant(self.root) or is_variable(self.root):
+            return Formula(self.root)
+        
+        if is_unary(self.root): 
+            return Formula(self.root, self.first.substitute_operators(substitution_map))
+        
+        if is_binary(self.root):
+            return Formula(self.root,self.first.substitute_operators(substitution_map), self.second.substitute_operators(substitution_map))
         # Task 3.4
